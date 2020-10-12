@@ -1,9 +1,9 @@
-;;; helm-wordnut.el --- Helm interface for WordNet -*- lexical-binding: t; -*-
+;;; counsel-wordnut.el --- Helm interface for WordNet -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2020  Manuel Uberti <manuel.uberti@inventati.org>
 
 ;; Author: Manuel Uberti <manuel.uberti@inventati.org>
-;; URL: https://github.com/emacs-helm/helm-wordnut
+;; URL: https://github.com/emacs-helm/counsel-wordnut
 ;; Version: 0.1
 ;; Package-Requires: ((emacs "24.3"))
 
@@ -18,25 +18,25 @@
 
 ;;; Code:
 
-(require 'helm)
+(require 'ivy)
 (require 'org)
 
-(defgroup helm-wordnut nil
+(defgroup counsel-wordnut nil
   "Helm interface for WordNet."
   :group 'convenience)
 
-(defcustom helm-wordnut-wordnet-location
+(defcustom counsel-wordnut-wordnet-location
   (car (file-expand-wildcards "/usr/share/wordnet*"))
   "Location of WordNet index files."
   :type 'string
-  :group 'helm-wordnut)
+  :group 'counsel-wordnut)
 
-(defcustom helm-wordnut-prog "wn"
+(defcustom counsel-wordnut-prog "wn"
   "Name of the WordNet program."
   :type 'string
-  :group 'helm-wordnut)
+  :group 'counsel-wordnut)
 
-(defconst helm-wordnut-cmd-options
+(defconst counsel-wordnut-cmd-options
   '("-over"
     "-synsn" "-synsv" "-synsa" "-synsr"
     "-simsv"
@@ -66,7 +66,7 @@
     "-attrn" "-attra")
   "Optional arguments for WordNet command.")
 
-(defconst helm-wordnut-section-headings
+(defconst counsel-wordnut-section-headings
   '("Antonyms" "Synonyms" "Hyponyms" "Troponyms"
     "Meronyms" "Holonyms" "Pertainyms"
     "Member" "Substance" "Part"
@@ -74,10 +74,10 @@
     "Coordinate" "Grep" "Similarity"
     "Entailment" "'Cause To'" "Sample" "Overview of"))
 
-(defun helm-wordnut--get-wordlist ()
+(defun counsel-wordnut--get-wordlist ()
   "Fetch WordNet suggestions and return them as a list."
   (let* ((all-indexes (directory-files
-                       helm-wordnut-wordnet-location t "index\\..*" ))
+                       counsel-wordnut-wordnet-location t "index\\..*" ))
          (word-indexes (cl-remove-if
                         (lambda (x) (string-match-p "index\\.sense$" x))
                         all-indexes)))
@@ -91,33 +91,33 @@
          (split-string (buffer-string) "\n" t)))
      word-indexes)))
 
-(defvar helm-wordnut-all-words nil
+(defvar counsel-wordnut-all-words nil
   "List of all the words available via WordNet.")
 
-(defun helm-wordnut--get-candidates ()
-  "Initialize `helm-wordnut-all-words' and return it."
-  (unless (bound-and-true-p helm-wordnut-all-words)
-    (setq helm-wordnut-all-words (helm-wordnut--get-wordlist)))
-  helm-wordnut-all-words)
+(defun counsel-wordnut--get-candidates ()
+  "Initialize `counsel-wordnut-all-words' and return it."
+  (unless (bound-and-true-p counsel-wordnut-all-words)
+    (setq counsel-wordnut-all-words (counsel-wordnut--get-wordlist)))
+  counsel-wordnut-all-words)
 
-(defconst helm-wordnut-fl-link-cat-re "->\\((.+?)\\)?")
-(defconst helm-wordnut-fl-link-word-sense-re "\\([^,;)>]+#[0-9]+\\)")
-(defconst helm-wordnut-fl-link-re (concat helm-wordnut-fl-link-cat-re " "
-                                          helm-wordnut-fl-link-word-sense-re))
-(defconst helm-wordnut-font-lock-keywords
+(defconst counsel-wordnut-fl-link-cat-re "->\\((.+?)\\)?")
+(defconst counsel-wordnut-fl-link-word-sense-re "\\([^,;)>]+#[0-9]+\\)")
+(defconst counsel-wordnut-fl-link-re (concat counsel-wordnut-fl-link-cat-re " "
+                                          counsel-wordnut-fl-link-word-sense-re))
+(defconst counsel-wordnut-font-lock-keywords
   `(("^\\* .+$" . 'org-level-1)
     ("^\\*\\* .+$" . 'org-level-2)
-    (,helm-wordnut-fl-link-cat-re ;; anchor
-     ,(concat " " helm-wordnut-fl-link-word-sense-re) nil nil (1 'link))))
+    (,counsel-wordnut-fl-link-cat-re ;; anchor
+     ,(concat " " counsel-wordnut-fl-link-word-sense-re) nil nil (1 'link))))
 
-(define-derived-mode helm-wordnut-mode special-mode "Helm-Wordnut"
+(define-derived-mode counsel-wordnut-mode special-mode "Helm-Wordnut"
   "Major mode interface to WordNet lexical database."
-  (setq font-lock-defaults '(helm-wordnut-font-lock-keywords))
+  (setq font-lock-defaults '(counsel-wordnut-font-lock-keywords))
   (let ((org-startup-folded nil))
     (org-mode))
   (visual-line-mode +1))
 
-(defun helm-wordnut--format-buffer ()
+(defun counsel-wordnut--format-buffer ()
   "Format the entry buffer."
   (let ((inhibit-read-only t)
         (case-fold-search nil))
@@ -128,7 +128,7 @@
     ;; Make headings
     (delete-matching-lines "^ +$" (point-min) (point-max))
     (while (re-search-forward
-            (concat "^" (regexp-opt helm-wordnut-section-headings t)) nil t)
+            (concat "^" (regexp-opt counsel-wordnut-section-headings t)) nil t)
       (replace-match "* \\1"))
 
     ;; Remove empty entries
@@ -150,38 +150,33 @@
 
     (goto-char (point-min))))
 
-(defun helm-wordnut--persistent-action (word)
+(defun counsel-wordnut--persistent-action (word)
   "Display the meaning of WORD."
   (let ((buf (get-buffer-create "*WordNet*"))
-        (options (mapconcat 'identity helm-wordnut-cmd-options " ")))
+        (options (mapconcat 'identity counsel-wordnut-cmd-options " ")))
     (with-current-buffer buf
       (let ((inhibit-read-only t))
         (erase-buffer)
         (insert (shell-command-to-string
-                 (format "%s %s %s" helm-wordnut-prog word options))))
-      (helm-wordnut--format-buffer)
+                 (format "%s %s %s" counsel-wordnut-prog word options))))
+      (counsel-wordnut--format-buffer)
       (set-buffer-modified-p nil)
-      (unless (eq major-mode 'helm-wordnut-mode) (helm-wordnut-mode))
+      (unless (eq major-mode 'counsel-wordnut-mode) (counsel-wordnut-mode))
       (display-buffer buf)
       (other-window 1))))
 
-(defvar helm-wordnut-source
-  (helm-build-sync-source "WordNet"
-    :candidates #'helm-wordnut--get-candidates
-    :action '(("Dictionary" . helm-wordnut--persistent-action))
-    :persistent-action #'helm-wordnut--persistent-action
-    :pattern-transformer #'downcase
-    :requires-pattern 1))
-
 ;;;###autoload
-(defun helm-wordnut ()
-  "Lookup WordNet definitions with Helm."
+(defun counsel-wordnut ()
+  "Search wordnut with ivy."
   (interactive)
-  (helm :sources 'helm-wordnut-source
-        :buffer "*helm wordnut*"
-        :default (thing-at-point 'word)))
+  (ivy-read "Wordnut search: "
+            (counsel-wordnut--get-candidates)
+            :history 'counsel-wordnut-history
+            :require-match t
+            :action #'counsel-wordnut--persistent-action
+            :caller 'counsel-wordnut))
 
 
-(provide 'helm-wordnut)
+(provide 'counsel-wordnut)
 
-;;; helm-wordnut.el ends here
+;;; counsel-wordnut.el ends here

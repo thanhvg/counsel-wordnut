@@ -1,4 +1,9 @@
-# helm-wordnut
+# counsel-wordnut
+
+This package is merely a quick hack over
+[helm-wordnet](https://github.com/emacs-helm/helm-wordnut) to add `ivy`
+interface. The function is `counsel-wordnet`. Bellow is the original
+`helm-wordnet` readme:
 
 This package is merely a combination of two packages already available:
 
